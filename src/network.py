@@ -61,13 +61,13 @@ class Resnet18(nn.Module):
 
 def make_model(name,n_per_unit):
     if name == 'Vgg16':
-        net = Vgg16().to(device)
+        net = Vgg16()
     elif name == 'Vgg16_bn':
-        net = Vgg16_bn(n_per_unit).to(device)
+        net = Vgg16_bn(n_per_unit)
     elif name == 'Vgg19':
-        net = Vgg19().to(device)
+        net = Vgg19()
     elif name == 'Vgg19_bn':
-        net = Vgg19_bn(n_per_unit).to(device)
+        net = Vgg19_bn(n_per_unit)
     elif name == 'ResNet18':
         net = Resnet18().to(device)
     elif name == 'ResNet34':

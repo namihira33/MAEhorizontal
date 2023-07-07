@@ -13,7 +13,7 @@ plt.rcParams["axes.facecolor"] = 'white'
 #画像のパスを生成
 def make_img_paths():
     img_paths = []
-    image_list_file = config.test_info_list
+    image_list_file = config.train_info_list
 
     with open(image_list_file, "r") as f:
             for line in f:

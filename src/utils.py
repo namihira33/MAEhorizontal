@@ -164,6 +164,53 @@ class BinaryUnderSampler:
         def __len__(self):
             return len(self.minor_indices)//self.n_samples + 1
 
+
+class EarlyStopping:
+    """earlystoppingクラス"""
+
+    def __init__(self, patience=5, verbose=False, delta=0,path='./model/checkpoint_model.pth'):
+        """引数：最小値の非更新数カウンタ、表示設定、モデル格納path"""
+
+        self.patience = patience    
+        self.verbose = verbose      
+        self.counter = 0
+        self.epoch = 0            
+        self.best_score = None     
+        self.early_stop = False 
+        self.val_pr_auc_max = 0  
+        self.path = path
+        self.delta = delta       
+
+    def __call__(self, val_pr_auc, model,epoch):
+        """
+        特殊(call)メソッド
+        実際に学習ループ内で最小lossを更新したか否かを計算させる部分
+        """
+        score = val_pr_auc
+
+        if self.best_score is None:  #1Epoch目の処理
+            self.best_score = score   
+            self.checkpoint(val_pr_auc,model,epoch)  
+        elif score < self.best_score + self.delta:  # ベストスコアを更新できなかった場合
+            self.counter += 1   #ストップカウンタを+1
+            if self.verbose:  #表示を有効にした場合は経過を表示
+                print(f'EarlyStopping counter: {self.counter} out of {self.patience}')  #現在のカウンタを表示する 
+            if self.counter >= self.patience:  #設定カウントを上回ったらストップフラグをTrueに変更
+                self.early_stop = True
+        else:  #ベストスコアを更新した場合
+            self.best_score = score  
+            self.epoch = epoch
+            self.checkpoint(val_pr_auc, model,epoch)  #モデルを保存してスコア表示
+            self.counter = 0  #ストップカウンタリセット
+
+    def checkpoint(self, val_pr_auc, model,epoch):
+        '''ベストスコア更新時に実行されるチェックポイント関数'''
+        if self.verbose:  #表示を有効にした場合は、前回のベストスコアからどれだけ更新したか？を表示
+            print(f'Validation mae decreased ({self.val_pr_auc_max:.6f} --> {val_pr_auc:.6f}).  Saving model ...')
+        torch.save(model.state_dict(), self.path)  #ベストモデルを指定したpathに保存
+        #torch.save(model.module.state_dict(),'./model/evaluate.pth') #評価用のpathにベストモデルを保存
+        self.val_pr_auc_max = val_pr_auc 
+
 def sigmoid(x):
     return 1/(1+np.exp(-x))
 

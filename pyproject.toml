@@ -7,8 +7,8 @@ authors = ["namihira33 <syuntakosu1011@gmail.com>"]
 [tool.poetry.dependencies]
 python = "^3.8"
 matplotlib = "^3.4.2"
-torch = "^1.9.0+cu111"
-torchvision = "^0.10.0+cu111"
+torch = "^1.11.0.dev20220124+cu113"
+torchvision = "^0.12.0.dev20220124+cu113"
 sklearn = "^0.0"
 tqdm = "^4.61.2"
 ipykernel = "^6.0.1"

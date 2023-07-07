@@ -34,7 +34,7 @@ def write_LogHeader(log_path):
     #CSVファイルのヘッダー記述
     with open(log_path + "/log.csv",'w') as f:
         writer = csv.writer(f)
-        writer.writerow(['model_name','lr','seed','preprocess','beta','gamma','phase','epoch','loss','roc-auc','pr-auc','f1','TN','FN','FP','TP'])
+        writer.writerow(['model_name','lr','seed','preprocess','sampler','beta','gamma','phase','epoch','loss','roc-auc','pr-auc','f1','TN','FN','FP','TP'])
 
 def write_Scores(log_path,result_list):
     #リストを1行書き加える。
@@ -85,6 +85,7 @@ class Trainer():
         self.log_path = os.path.join(config.LOG_DIR_PATH,
                                 str(self.now))
         os.makedirs(self.log_path, exist_ok=True)
+        self.earlystopping = EarlyStopping(patience=5,verbose=False,delta=0)
         write_LogHeader(self.log_path)
 
     def run(self):
@@ -102,13 +103,9 @@ class Trainer():
             self.c = c
             self.c['n_per_unit'] = 1 if self.c['d_mode'] == 'horizontal' else 16
             self.c['type'] = TypeToIntdict[self.c['type']]
-
             self.net = make_model(self.c['model_name'],self.c['n_per_unit'])
             self.optimizer = optim.SGD(params=self.net.parameters(),lr=self.c['lr'],momentum=0.9)
             self.net = nn.DataParallel(self.net)
-
-            #将来はここをconfigに応じて損失関数を変えられるように (関数化してきれいに書く。上もきれいにかけそう)
-            #self.criterion = Focal_MultiLabel_Loss(gamma=2)
             
             #訓練、検証に分けてデータ分割
             self.dataset = load_dataset(self.c['n_per_unit'],self.c['type'],self.c['preprocess'])
@@ -160,13 +157,20 @@ class Trainer():
                     lossList['learning'][a].append(learningloss)
 
                     if not self.c['evaluate']:
-                        validauc,validloss,validprecision,validrecall \
+                        valid_pr_auc,validloss,validprecision,validrecall \
                             = self.execute_epoch(epoch, 'valid')
+
+                        self.earlystopping(valid_pr_auc,self.net,epoch)
+                        #ストップフラグがTrueの場合、breakでforループを抜ける
+                        if self.earlystopping.early_stop:
+                            print("Early Stopping!")
+                            print('Stop epoch :', epoch)
+
 
                         lossList['valid'][a].append(validloss)
 
-                        #validaucを蓄えておいてあとでベスト10を出力
-                        temp = validauc,epoch,self.c
+                        #valid_pr_aucを蓄えておいてあとでベスト10を出力
+                        temp = valid_pr_auc,epoch,self.c
                         self.prms.append(temp)
 
                     #乱数シード×CV数で平均を取るときのために残しておく。
@@ -312,7 +316,7 @@ class Trainer():
             f'epoch: {epoch} phase: {phase} loss: {total_loss:.3f} roc-auc: {roc_auc:.3f} pr-auc: {pr_auc:.3f} f1:{f1:.3f} TN:{TN} FN:{FN} FP:{FP} TP:{TP}')
 
         #ここにpr_auc,f1,tn,fn,tp,fpを追加
-        result_list = [self.c['model_name'],self.c['lr'],self.c['seed'],self.c['preprocess'],self.c['beta'],self.c['gamma'],phase,epoch,total_loss,roc_auc,pr_auc,f1,TN,FN,FP,TP]
+        result_list = [self.c['model_name'],self.c['lr'],self.c['seed'],self.c['preprocess'],self.c['sampler'],self.c['beta'],self.c['gamma'],phase,epoch,total_loss,roc_auc,pr_auc,f1,TN,FN,FP,TP]
 
         write_Scores(self.log_path,result_list)
         
@@ -321,4 +325,4 @@ class Trainer():
         #    writer.writerow(result_list)
 
 
-        return auc,total_loss,recall,precision
+        return pr_auc,total_loss,recall,precision
