@@ -85,7 +85,6 @@ class Trainer():
         self.log_path = os.path.join(config.LOG_DIR_PATH,
                                 str(self.now))
         os.makedirs(self.log_path, exist_ok=True)
-        self.earlystopping = EarlyStopping(patience=5,verbose=False,delta=0)
         write_LogHeader(self.log_path)
 
     def run(self):
@@ -150,6 +149,8 @@ class Trainer():
                     self.dataloaders['valid'] = DataLoader(valid_dataset,self.c['bs'],
                     shuffle=True,num_workers=os.cpu_count())
 
+                self.earlystopping = EarlyStopping(patience=10,verbose=False,delta=0)
+
                 for epoch in range(1, self.c['n_epoch']+1):
                     learningauc,learningloss,learningprecision,learningrecall \
                         = self.execute_epoch(epoch, 'learning')
@@ -165,6 +166,7 @@ class Trainer():
                         if self.earlystopping.early_stop:
                             print("Early Stopping!")
                             print('Stop epoch :', epoch)
+                            break
 
 
                         lossList['valid'][a].append(validloss)
@@ -187,12 +189,12 @@ class Trainer():
                     break
 
             #分割交差検証後の処理
-            lossList['learning'] = list(np.mean(lossList['learning'],axis=0))
-            if not self.c['evaluate']:
-                lossList['valid'] = list(np.mean(lossList['valid'],axis=0))
+            #lossList['learning'] = list(np.mean(lossList['learning'],axis=0))
+            #if not self.c['evaluate']:
+            #    lossList['valid'] = list(np.mean(lossList['valid'],axis=0))
 
-            if self.c['cv']:
-                plot_Loss(os.path.join(config.LOG_DIR_PATH,'images'),lossList,self.c['lr'],self.c['preprocess'])
+            #if self.c['cv']:
+            #    plot_Loss(os.path.join(config.LOG_DIR_PATH,'images'),lossList,self.c['lr'],self.c['preprocess'])
 
                 #for phase in ['learning','valid']:
                 #    epochs = list(range(1,len(lossList[phase])))
@@ -215,7 +217,7 @@ class Trainer():
         #パラメータiter後の処理。
         elapsed_time = time.time() - start
         print(f"実行時間 : {elapsed_time:.01f}")
-        #訓練後、モデルを、'(実行回数)_(モデル名)_(学習epoch).pth' という名前で保存。
+        # 訓練後、モデルを、'(実行回数)_(モデル名)_(学習epoch).pth' という名前で保存。
         try : 
             model_name = self.search['model_name'][0]
             n_ep = self.search['n_epoch']

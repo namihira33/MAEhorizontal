@@ -2,9 +2,9 @@
 
 for preprocess in Add_BlackRects
 do
-    for lr in 1e-5
+    for lr in 1e-5 5e-5 1e-4 5e-4
     do
-        for beta in 0
+        for beta in 0 -1 0.9 0.99 0.999
         do
             for gamma in 2
             do
