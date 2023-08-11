@@ -492,15 +492,18 @@ def macro_pr_auc(labels,preds,n_class):
         for i in range(n_class):
             #クラスiが陽性、それ以外が陰性のときのPR曲線を求める。
             preds_cpy = copy.deepcopy(preds)
-            preds_cpy[preds_cpy == i] = 1
-            preds_cpy[preds_cpy != i] = 0
+            for j in range(len(preds_cpy)):
+                if preds_cpy[j] == i:
+                    preds_cpy[j] = 1
+                else:
+                    preds_cpy[j] = 0
 
-            labels_cpy = copy.deepcope(labels)
-            labels_cpy[labels_cpy == i] = 1
-            labels_cpy[preds_cpy != i] = 0
-
-            print(labels,preds)
-            print(labels_cpy,preds_cpy)
+            labels_cpy = copy.deepcopy(labels)
+            for j in range(len(labels_cpy)):
+                if labels_cpy[j] == i:
+                    labels_cpy[j] = 1
+                else:
+                    labels_cpy[j] = 0
 
             precisions, recalls, thresholds = precision_recall_curve(labels_cpy, preds_cpy)
             try:
