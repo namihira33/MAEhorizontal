@@ -12,7 +12,7 @@ MODEL_DIR_PATH = './model/'
 LOG_DIR_PATH = './log/'
 n_per_unit = 1
 image_size = 224
-n_class = 2
+n_class = 3
 
 # train_info_list = '../medicaldata/txt/casia16_train_list.csv'
 # test_info_list = '../medicaldata/txt/casia16_test_list.csv'

@@ -71,8 +71,10 @@ class OCThorizontalDataset(OCThorizontalDatasetBase):
     def get_label(self, label_base):
         if label_base == 1:
             return 0
-        else:
+        elif label_base == 2:
             return 1
+        else:
+            return 2
 
 #回転断面画像のデータセット
 class OCTspinDatasetBase(Dataset):

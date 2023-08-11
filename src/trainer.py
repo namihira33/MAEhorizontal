@@ -53,14 +53,14 @@ def plot_Loss(dir_path,lossList,lr,preprocess):
 
 def calc_class_inverse_weight(dataset):
     #各クラス数をカウントする / 逆数の場合
-    class_count = [202,451]
+    class_count = [202,202,249]
     class_weight = [torch.Tensor([n**(-1) * sum(class_count)]) for n in class_count]
 
     print(class_weight)
     return torch.Tensor(class_weight)
 
 def calc_class_weight(dataset,beta):
-    class_count = [202,451]
+    class_count = [202,202,249]
     if beta == -1:
         return calc_class_inverse_weight(dataset)
     elif beta == 0:
@@ -139,9 +139,9 @@ class Trainer():
                 if self.c['sampler'] == 'normal':
                     self.dataloaders['learning'] = DataLoader(learning_dataset,self.c['bs'],num_workers=os.cpu_count(),shuffle=True)
                 elif self.c['sampler'] == 'over':
-                    self.dataloaders['learning'] = BinaryOverSampler(learning_dataset,self.c['bs']//2)
+                    self.dataloaders['learning'] = TripleOverSampler(learning_dataset,self.c['bs']//config.n_class)
                 elif self.c['sampler'] == 'under':
-                    self.dataloaders['learning'] = BinaryUnderSampler(learning_dataset,self.c['bs']//2)
+                    self.dataloaders['learning'] = TripleUnderSampler(learning_dataset,self.c['bs']//config.n_class)
 
                 if not self.c['evaluate']:
                     valid_dataset = Subset(self.dataset['train'],valid_index)
@@ -149,7 +149,7 @@ class Trainer():
                     self.dataloaders['valid'] = DataLoader(valid_dataset,self.c['bs'],
                     shuffle=True,num_workers=os.cpu_count())
 
-                self.earlystopping = EarlyStopping(patience=10,verbose=False,delta=0)
+                #self.earlystopping = EarlyStopping(patience=10,verbose=False,delta=0)
 
                 for epoch in range(1, self.c['n_epoch']+1):
                     learningauc,learningloss,learningprecision,learningrecall \
@@ -161,12 +161,12 @@ class Trainer():
                         valid_pr_auc,validloss,validprecision,validrecall \
                             = self.execute_epoch(epoch, 'valid')
 
-                        self.earlystopping(valid_pr_auc,self.net,epoch)
+                        #self.earlystopping(valid_pr_auc,self.net,epoch)
                         #ストップフラグがTrueの場合、breakでforループを抜ける
-                        if self.earlystopping.early_stop:
-                            print("Early Stopping!")
-                            print('Stop epoch :', epoch)
-                            break
+                        #if self.earlystopping.early_stop:
+                        #    print("Early Stopping!")
+                        #    print('Stop epoch :', epoch)
+                        #    break
 
 
                         lossList['valid'][a].append(validloss)
@@ -249,6 +249,9 @@ class Trainer():
             inputs_ = inputs_.to(device)
             labels_ = labels_.to(device)
 
+            #labels_はOne-hot表現じゃないようにする
+            labels_ = torch.max(labels_,1)[1]
+
             #Samplerを使うときの処理
             if phase == 'learning' and ((self.c['sampler'] == 'over') or (self.c['sampler'] == 'under')):
                 inputs_ = inputs_.unsqueeze(1)
@@ -260,7 +263,7 @@ class Trainer():
             with torch.set_grad_enabled(phase == 'learning'):
                 outputs_ = self.net(inputs_).to(device)
                 #outputs__ = outputs_.unsqueeze(1)
-                loss = self.criterion(outputs_, labels_)
+                loss = self.criterion(outputs_, labels_.long())
                 total_loss += loss.item()
 
                 if phase == 'learning':
@@ -274,7 +277,7 @@ class Trainer():
         preds = np.concatenate(preds)
         labels = np.concatenate(labels)
         try:
-            roc_auc = roc_auc_score(labels, preds)
+            roc_auc = roc_auc_score(labels, preds,average='macro')
         except:
             roc_auc = 0
 
@@ -284,17 +287,17 @@ class Trainer():
         preds[preds <= threshold] = 0
 
         preds = np.argmax(preds,axis=1)
-        labels = np.argmax(labels,axis=1)
+        #labels = np.argmax(labels,axis=1)
 
         total_loss /= len(preds)
-        recall = recall_score(labels,preds)
-        precision = precision_score(labels,preds)
-        precisions, recalls, thresholds = precision_recall_curve(labels, preds)
-        try:
-            pr_auc = auc(recalls, precisions)
-        except:
-            pr_auc = 0
-        f1 = f1_score(labels,preds)
+        recall = recall_score(labels,preds,average='macro')
+        precision = precision_score(labels,preds,average='macro')
+
+        #PR-AUCのマクロ平均を求める
+
+
+        pr_auc = macro_pr_auc(labels,preds,config.n_class)
+        f1 = f1_score(labels,preds,average='macro')
         confusion_Matrix = confusion_matrix(labels,preds)
         try:
             TN = confusion_Matrix[0][0]
