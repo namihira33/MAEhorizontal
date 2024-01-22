@@ -8,11 +8,14 @@ data_root = '../medicaldata/images/CASIA2_16'
 train_info_list = '../medicaldata/txt/casia16_train_list.csv'
 test_info_list = '../medicaldata/txt/casia16_test_list.csv'
 
+#pickleの位置
+normal_pkl = '../medicaldata/pkls/OCT_ViT_spin.pkl'
+
 MODEL_DIR_PATH = './model/'
 LOG_DIR_PATH = './log/'
 n_per_unit = 1
 image_size = 224
-n_class = 3
+n_class = 2
 
 # train_info_list = '../medicaldata/txt/casia16_train_list.csv'
 # test_info_list = '../medicaldata/txt/casia16_test_list.csv'

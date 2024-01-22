@@ -18,6 +18,7 @@ from utils  import *
 from network import *
 from Dataset import *
 from torchvision import models,transforms
+from transformers import DeiTFeatureExtractor, DeiTForImageClassification
 from PIL import Image
 from sklearn.metrics import *
 from datetime import datetime
@@ -29,6 +30,27 @@ TypeToIntdict = {'age':3,'gender':4,'N':5,'C':7,'P':8}
 #2値分類
 torch.backends.cudnn.benchmark = True
 device = torch.device('cuda:0')
+
+class Subset_label(Dataset):
+    """
+    Subset of a dataset at specified indices.
+
+    Arguments:
+        dataset (Dataset): The whole Dataset
+        indices (sequence): Indices in the whole set selected for subset
+    """
+    def __init__(self, dataset, indices):
+        self.dataset = dataset
+        self.indices = indices
+
+    def __getitem__(self, idx):
+        return self.dataset[self.indices[idx]]
+
+    def __len__(self):
+        return len(self.indices)
+
+    def pick_label(self,idx):
+        return self.dataset.pick_label(self.indices[idx])
 
 def write_LogHeader(log_path):
     #CSVファイルのヘッダー記述
@@ -51,18 +73,31 @@ def plot_Loss(dir_path,lossList,lr,preprocess):
         plt.legend()
         plt.savefig(os.path.join(dir_path,'Loss_') + '{:%y%m%d-%H:%M}'.format(datetime.now()) + '.png')
 
-def calc_class_inverse_weight(dataset):
+def calc_class_count(dataset,n_class):
+    #データセットからラベルの値を一つずつ取り出して、クラス数を計算する
+    class_count = [0] * n_class
+
+    for i in range(len(dataset)):
+        label = int([np.argmax(dataset[i][1].detach().cpu().numpy())][0])
+        class_count[label] += 1
+
+    #labelsを元に各クラスの数を計算する
+    print(class_count)
+    return class_count
+
+
+def calc_class_inverse_weight(dataset,n_class):
     #各クラス数をカウントする / 逆数の場合
-    class_count = [202,202,249]
+    class_count = calc_class_count(dataset,n_class)
     class_weight = [torch.Tensor([n**(-1) * sum(class_count)]) for n in class_count]
 
     print(class_weight)
     return torch.Tensor(class_weight)
 
-def calc_class_weight(dataset,beta):
-    class_count = [202,202,249]
+def calc_class_weight(dataset,n_class,beta):
+    class_count = calc_class_count(dataset,n_class) #これをデータセットから計算する関数が必要
     if beta == -1:
-        return calc_class_inverse_weight(dataset)
+        return calc_class_inverse_weight(dataset,n_class)
     elif beta == 0:
         class_weight = [torch.Tensor([1]) for n in range(config.n_class)]
         print(class_weight)
@@ -102,15 +137,26 @@ class Trainer():
             self.c = c
             self.c['n_per_unit'] = 1 if self.c['d_mode'] == 'horizontal' else 16
             self.c['type'] = TypeToIntdict[self.c['type']]
-            self.net = make_model(self.c['model_name'],self.c['n_per_unit'])
-            self.optimizer = optim.SGD(params=self.net.parameters(),lr=self.c['lr'],momentum=0.9)
-            self.net = nn.DataParallel(self.net)
+
+            #訓練、検証に分けてデータ分割
+            if os.path.exists(config.normal_pkl):
+                with open(config.normal_pkl,mode="rb") as f:
+                    self.dataset = pickle.load(f)
+            else :
+                self.dataset = load_dataset(self.c['n_per_unit'],self.c['type'],self.c['preprocess'])
+                with open(config.normal_pkl,mode="wb") as f:
+                    pickle.dump(self.dataset,f)
+
+
+            #使用モデルがViTの場合に改造する。
+            #self.net = make_model(self.c['model_name'],self.c['n_per_unit'])
+            #self.net = nn.DataParallel(self.net)
+            #self.optimizer = optim.SGD(params=self.net.parameters(),lr=self.c['lr'],momentum=0.9)
             
             #訓練、検証に分けてデータ分割
-            self.dataset = load_dataset(self.c['n_per_unit'],self.c['type'],self.c['preprocess'])
+            #self.dataset = load_dataset(self.c['n_per_unit'],self.c['type'],self.c['preprocess'])
             kf = StratifiedKFold(n_splits=self.n_splits,shuffle=True,random_state=0)
             train_id_index,y = calc_kfold_criterion('train')
-
             id_index = kf.split(train_id_index,y) if not self.c['evaluate'] else [(train_id_index,[])]
 
             lossList = {}
@@ -122,15 +168,21 @@ class Trainer():
 
             #learning_id_index , valid_id_index = kf.split(train_id_index,y).__next__() 1つだけ取り出したいとき
             for a,(learning_id_index,valid_id_index) in enumerate(id_index):
-                self.net.apply(init_weights)
+                #self.net.apply(init_weights)
+                self.net = make_model(self.c['model_name'],self.c['n_per_unit'])#.to(device)
+                self.net = nn.DataParallel(self.net).to(device)
                 self.optimizer = optim.SGD(params=self.net.parameters(),lr=self.c['lr'],momentum=0.9)
+                #self.optimizer = optim.SGD(params=self.net.parameters(),lr=self.c['lr'],momentum=0.9)
 
                 #画像に対応したIDに変換 -> Dataloaderで読み込む。
                 learning_index,valid_index = calc_dataset_index(learning_id_index,valid_id_index,'train',self.c['n_per_unit'])
                 learning_dataset = Subset(self.dataset['train'],learning_index)
 
+                #訓練データの各クラス数をカウントしないといけないのでは？
+                
                 #self.class_weight = calc_class_inverse_weight(learning_dataset)
-                self.class_weight = calc_class_weight(learning_dataset,beta=self.c['beta'])
+                self.class_weight = calc_class_weight(learning_dataset,config.n_class,beta=self.c['beta'])
+                calc_class_count(learning_dataset,config.n_class)
                 #self.criterion = nn.BCELoss(weight=self.class_weight.to(device))
                 self.criterion = Focal_MultiLabel_Loss(gamma=self.c['gamma'],weights=self.class_weight.to(device))
 
@@ -139,9 +191,9 @@ class Trainer():
                 if self.c['sampler'] == 'normal':
                     self.dataloaders['learning'] = DataLoader(learning_dataset,self.c['bs'],num_workers=os.cpu_count(),shuffle=True)
                 elif self.c['sampler'] == 'over':
-                    self.dataloaders['learning'] = TripleOverSampler(learning_dataset,self.c['bs']//config.n_class)
+                    self.dataloaders['learning'] = BinaryOverSampler(learning_dataset,self.c['bs']//config.n_class)
                 elif self.c['sampler'] == 'under':
-                    self.dataloaders['learning'] = TripleUnderSampler(learning_dataset,self.c['bs']//config.n_class)
+                    self.dataloaders['learning'] = BinaryUnderSampler(learning_dataset,self.c['bs']//config.n_class)
 
                 if not self.c['evaluate']:
                     valid_dataset = Subset(self.dataset['train'],valid_index)
@@ -238,7 +290,7 @@ class Trainer():
 
     #1epochごとの処理
     def execute_epoch(self, epoch, phase):
-        preds, labels,total_loss= [], [],0
+        preds, labels,total_loss= [],[],0
         if phase == 'learning':
             self.net.train()
         else:
@@ -253,15 +305,23 @@ class Trainer():
             labels_ = torch.max(labels_,1)[1]
 
             #Samplerを使うときの処理
-            if phase == 'learning' and ((self.c['sampler'] == 'over') or (self.c['sampler'] == 'under')):
-                inputs_ = inputs_.unsqueeze(1)
-                #labels_ = labels_.unsqueeze(1)
+            #if phase == 'learning' and ((self.c['sampler'] == 'over') or (self.c['sampler'] == 'under')):
+            #    inputs_ = inputs_.unsqueeze(1)
+            #labels_ = labels_.unsqueeze(1)
 
 
             self.optimizer.zero_grad()
-
             with torch.set_grad_enabled(phase == 'learning'):
+                
+                #使用モデルがViTの場合
+#                if self.c['model_name']=='DeiT':
+#                    model_name = 'facebook/deit-base-distilled-patch16-224'
+#                    feature_extractor = DeiTFeatureExtractor.from_pretrained(model_name)
+ #                   inputs_ = feature_extractor(images=inputs_,return_tensor='pt')
+
+
                 outputs_ = self.net(inputs_).to(device)
+
                 #outputs__ = outputs_.unsqueeze(1)
                 loss = self.criterion(outputs_, labels_.long())
                 total_loss += loss.item()
@@ -270,33 +330,31 @@ class Trainer():
                     loss.backward(retain_graph=True)
                     self.optimizer.step()
 
+            softmax = nn.Softmax(dim=1)
+            ouputs_ = softmax(outputs_)
+
             preds += [outputs_.detach().cpu().numpy()]
             labels += [labels_.detach().cpu().numpy()]
             total_loss += float(loss.detach().cpu().numpy()) * len(inputs_)
 
         preds = np.concatenate(preds)
         labels = np.concatenate(labels)
+
+        pr_auc = macro_pr_auc(labels,preds,config.n_class)
+
         try:
-            roc_auc = roc_auc_score(labels, preds,average='macro')
+            roc_auc = roc_auc_score(labels, preds[:,1])
         except:
             roc_auc = 0
 
-
-        threshold = 0.5
-        preds[preds > threshold] = 1
-        preds[preds <= threshold] = 0
+        #予測値決定後のスコア (マクロ平均)を求める
 
         preds = np.argmax(preds,axis=1)
         #labels = np.argmax(labels,axis=1)
 
         total_loss /= len(preds)
         recall = recall_score(labels,preds,average='macro')
-        precision = precision_score(labels,preds,average='macro')
-
-        #PR-AUCのマクロ平均を求める
-
-
-        pr_auc = macro_pr_auc(labels,preds,config.n_class)
+        precision = precision_score(labels,preds,zero_division=0,average='macro')
         f1 = f1_score(labels,preds,average='macro')
         confusion_Matrix = confusion_matrix(labels,preds)
         try:

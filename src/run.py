@@ -2,7 +2,7 @@ from trainer import Trainer
 import numpy as np
 import sys
 
-c = {'model_name': ['ResNet18'],'seed':[0], 'bs': 36}
+c = {'model_name': ['ViT_1k'],'seed':[0], 'bs': 128}
 
 args = len(sys.argv)
 if args > 1:

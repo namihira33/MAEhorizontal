@@ -22,12 +22,13 @@ from datetime import datetime
 from PIL import Image
 from torchvision.utils import make_grid, save_image
 import matplotlib
+import japanize_matplotlib
 import csv
 import copy
 
 
 c = {
-    'model_name': 'Resnet18','seed': 0, 'bs': 32
+    'model_name': 'ViT_1k','seed': 0, 'bs': 32
 }
 
 torch.backends.cudnn.benchmark = True
@@ -87,6 +88,8 @@ class Evaluater():
 
         #モデルの作成。
         self.net = make_model(self.c['model_name'],self.c['n_per_unit'])
+        #model_name = 'vit_base_patch16_224'
+        #self.net = timm.create_model(model_name,num_classes=config.n_class).to(device)
         self.net.load_state_dict(torch.load(model_path,map_location=device))
         self.criterion = nn.BCELoss()
 
@@ -110,47 +113,65 @@ class Evaluater():
             inputs_ = inputs_.to(device)
             labels_ = labels_.to(device)
 
+            labels_ = torch.max(labels_,1)[1]
+
 
             torch.set_grad_enabled(True)
             outputs_ = self.net(inputs_)
-            loss = self.criterion(outputs_, labels_)
+            outputs_ = nn.Softmax(dim=1)(outputs_)
+
+            #loss = self.criterion(outputs_, labels_)
 
             preds += [outputs_.detach().cpu().numpy()]
             labels += [labels_.detach().cpu().numpy()]
             paths += paths_
 
-            total_loss += float(loss.detach().cpu().numpy()) * len(inputs_)
+            #total_loss += float(loss.detach().cpu().numpy()) * len(inputs_)
 
         preds = np.concatenate(preds)
         labels = np.concatenate(labels)
 
-        preds = sigmoid(preds)[:,1]
-        labels = np.argmax(labels,axis=1)
 
-        r_cnt,tmp,cnt = 0,0,0
-        total_loss /= len(preds)
-
-        print(labels,preds)
-
-        #作成画像の保存パス
+        # 作成画像の保存パス,PR-AUCの計算,PR曲線の描画
         model_info = self.n_ex+'_'+self.c['model_name']+'_'+self.c['n_epoch']+'ep'
-
-        # Auc値の計算,ROC曲線の描画
-        roc_auc = roc_auc_score(labels, preds)
-        fig_path = model_info + '_ep_ROC.png'
-        save_fig_path = os.path.join(config.LOG_DIR_PATH,'images',fig_path)
-        make_ROC(labels,preds,save_fig_path)
-
-        # PR-AUCの計算,PR曲線の描画
         fig_path = model_info + '_ep_PRC.png'
         save_fig_path = os.path.join(config.LOG_DIR_PATH,'images',fig_path)
-        make_PRC(labels,preds,save_fig_path)
 
-        #出力をもとに2値分類
-        precisions, recalls, thresholds = precision_recall_curve(labels, preds)
-        pr_auc = auc(recalls, precisions)
+        fig_path = model_info + '_ep_PRBar.png'
+        save_fig_path2 = os.path.join(config.LOG_DIR_PATH,'images',fig_path)
 
-        f1_list = []
+        fig_path = model_info + '_ep_F1Bar.png'
+        save_fig_path3 = os.path.join(config.LOG_DIR_PATH,'images',fig_path)
+
+        #多クラスの場合、PR-AUCのマクロ平均を計算する
+        pr_auc = macro_pr_auc(labels, preds,config.n_class)
+        make_PRC(labels,preds,save_fig_path,config.n_class) #クラスiの場合のグラフも作る (縦に3つでとりあえず作ってみる)
+        #make_PRBar(labels,preds,save_fig_path2,config.n_class )
+
+        roc_auc = roc_auc_score(labels, preds[:,1])
+        fig_path = model_info + '_ep_ROC.png'
+        save_fig_path = os.path.join(config.LOG_DIR_PATH,'images',fig_path)
+        make_ROC(labels,preds[:,1],save_fig_path)
+
+        #加重平均・四捨五入で予測
+        temp_class = np.arange(config.n_class)
+        preds = np.sum(preds*temp_class,axis=1)
+
+        #threshold = 0.5
+        #preds[preds<threshold] = 0
+        #preds[preds>=threshold] = 1
+
+        # 1.6478594e-08
+        # 二値より細かい分割の場合
+        preds = np.array([round(x) for x in preds])
+
+        #preds = np.argmax(preds,axis=1)
+        #labels = np.argmax(labels,axis=1)
+
+        r_cnt,tmp,cnt = 0,0,0
+        #total_loss /= len(preds)
+
+        # Auc値の計算,ROC曲線の描画
 
         #for threshold in thresholds:
         #    preds_cpy = copy.deepcopy(preds)
@@ -158,7 +179,6 @@ class Evaluater():
         #    preds_cpy[preds_cpy<=threshold] = 0
         #    f1 = f1_score(preds_cpy,labels)
         #    f1_list.append(f1)
-
         #print(f1_list)
         
 
@@ -167,25 +187,27 @@ class Evaluater():
         fig_path = model_info + '_ep_CM.png'
         save_fig_path = os.path.join(config.LOG_DIR_PATH,'images',fig_path)
 
-        threshold = 0.53
-        preds[preds > threshold] = 1
-        preds[preds <= threshold] = 0
         cm = confusion_matrix(labels,preds)
         make_ConfusionMatrix(cm,save_fig_path)
 
         right += (preds == labels).sum()
         notright += len(preds) - (preds == labels).sum()
         accuracy = right / len(test_dataset)
-        recall = recall_score(labels,preds)
-        precision = precision_score(labels,preds)
-        f1 = f1_score(labels,preds)
+        recall = recall_score(labels,preds,average='macro')
+        precision = precision_score(labels,preds,average='macro')
+        f1 = f1_score(labels,preds,average='macro')
+        #f1 = macro_f1(labels,preds,config.n_class)
+        #make_F1Bar(labels,preds,save_fig_path3,config.n_class)
 
-        print('accuracy :',accuracy)
-        print('AUC-ROC :',roc_auc)
-        print('AUC-PRC :',pr_auc)
-        print('F1 Score', f1)
-        print('Precision',precision)
-        print('Recall',recall)
+        kappa = cohen_kappa_score(labels,preds,weights='quadratic')
+
+        print('accuracy (macro) :',accuracy)
+        print('PR-AUC (macro) :',pr_auc)
+        print('ROC-AUC :',roc_auc)
+        print('F1 Score (macro)', f1)
+        print('Precision (macro) ',precision)
+        print('Recall (macro) ',recall)
+        print('Kappa',kappa)
 
 
         #評価値の棒グラフを作って保存。

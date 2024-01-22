@@ -2,6 +2,8 @@ import torchvision.models as models
 import torch.nn as nn
 import torch
 import config
+import timm
+from torchvision import transforms
 
 device = torch.device('cuda:0')
 
@@ -56,8 +58,62 @@ class Resnet18(nn.Module):
 
     def forward(self,x):
         x = self.net(x)
-        x = self.softmax(x)
+        #x = self.softmax(x)
         return x
+
+class ViT(nn.Module):
+    def __init__(self):
+        super().__init__()
+        model_name = 'vit_base_patch16_224'
+        self.net = timm.create_model(model_name,num_classes=config.n_class)
+        #self.softmax = nn.Softmax(dim=1)
+    
+    def forward(self,x):
+        x = self.net(x)
+        #x = self.softmax(x)
+        return x
+
+class ViT_1kF(nn.Module):
+    def __init__(self):
+        super().__init__()
+        model_name = 'vit_base_patch16_224'
+        self.net = timm.create_model(model_name,num_classes=config.n_class,pretrained=True)
+
+        update_param_names = ['head.weight','head.bias']
+
+        for name,param in self.net.named_parameters():
+            if name in update_param_names:
+                param.requires_grad = True
+            else:
+                param.requires_grad = False
+        #self.softmax = nn.Softmax(dim=1)
+    
+    def forward(self,x):
+        x = self.net(x)
+        #x = self.softmax(x)
+        return x
+
+
+class ViT_21kF(nn.Module):
+    def __init__(self):
+        super().__init__()
+        model_name = 'vit_base_patch16_224_in21k'
+        self.net = timm.create_model(model_name,num_classes=config.n_class,pretrained=True)
+
+        update_param_names = ['head.weight','head.bias']
+
+        for name,param in self.net.named_parameters():
+            if name in update_param_names:
+                param.requires_grad = True
+            else:
+                param.requires_grad = False
+        #self.softmax = nn.Softmax(dim=1)
+    
+    def forward(self,x):
+        x = self.net(x)
+        #x = self.softmax(x)
+        return x
+
 
 def make_model(name,n_per_unit):
     if name == 'Vgg16':
@@ -72,4 +128,14 @@ def make_model(name,n_per_unit):
         net = Resnet18().to(device)
     elif name == 'ResNet34':
         net = Resnet34().to(device)
+    elif name == 'ViT':
+        net = ViT().to(device)
+    elif name == 'ViT_1k':
+        net = ViT_1kF().to(device)
+    elif name == 'ViT_21k':
+        net = ViT_21kF().to(device)
+    elif name == 'Swin':
+        model_name = 'swin_base_patch4_window7_224_in22k'
+        net = timm.create_model(model_name,pretrained=True,num_classes=config.n_class).to(device)
+
     return net

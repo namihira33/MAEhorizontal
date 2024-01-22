@@ -1,73 +1,54 @@
-python3 ./src/evaluate.py 183 horizontal type=N
-python3 ./src/evaluate.py 184 horizontal type=N
-python3 ./src/evaluate.py 185 horizontal type=N
-python3 ./src/evaluate.py 186 horizontal type=N
-python3 ./src/evaluate.py 187 horizontal type=N
-python3 ./src/evaluate.py 188 horizontal type=N
-python3 ./src/evaluate.py 189 horizontal type=N
-python3 ./src/evaluate.py 190 horizontal type=N
-python3 ./src/evaluate.py 191 horizontal type=N
-python3 ./src/evaluate.py 192 horizontal type=N
-python3 ./src/evaluate.py 193 horizontal type=N
-python3 ./src/evaluate.py 194 horizontal type=N
-python3 ./src/evaluate.py 195 horizontal type=N
-python3 ./src/evaluate.py 196 horizontal type=N
-python3 ./src/evaluate.py 197 horizontal type=N
-python3 ./src/evaluate.py 198 horizontal type=N
-python3 ./src/evaluate.py 199 horizontal type=N
-python3 ./src/evaluate.py 200 horizontal type=N
-python3 ./src/evaluate.py 201 horizontal type=N
-python3 ./src/evaluate.py 202 horizontal type=N
-python3 ./src/evaluate.py 203 horizontal type=N
-python3 ./src/evaluate.py 204 horizontal type=N
-python3 ./src/evaluate.py 205 horizontal type=N
-python3 ./src/evaluate.py 206 horizontal type=N
-python3 ./src/evaluate.py 207 horizontal type=N
-python3 ./src/evaluate.py 208 horizontal type=N
-python3 ./src/evaluate.py 209 horizontal type=N
-python3 ./src/evaluate.py 210 horizontal type=N
-python3 ./src/evaluate.py 211 horizontal type=N
-python3 ./src/evaluate.py 212 horizontal type=N
-python3 ./src/evaluate.py 213 horizontal type=N
-python3 ./src/evaluate.py 214 horizontal type=N
-python3 ./src/evaluate.py 215 horizontal type=N
-python3 ./src/evaluate.py 216 horizontal type=N
-python3 ./src/evaluate.py 217 horizontal type=N
-python3 ./src/evaluate.py 218 horizontal type=N
-python3 ./src/evaluate.py 219 horizontal type=N
-python3 ./src/evaluate.py 220 horizontal type=N
-python3 ./src/evaluate.py 221 horizontal type=N
-python3 ./src/evaluate.py 222 horizontal type=N
-python3 ./src/evaluate.py 223 horizontal type=N
-python3 ./src/evaluate.py 224 horizontal type=N
-python3 ./src/evaluate.py 225 horizontal type=N
-python3 ./src/evaluate.py 226 horizontal type=N
-python3 ./src/evaluate.py 227 horizontal type=N
-python3 ./src/evaluate.py 228 horizontal type=N
-python3 ./src/evaluate.py 229 horizontal type=N
-python3 ./src/evaluate.py 230 horizontal type=N
-python3 ./src/evaluate.py 231 horizontal type=N
-python3 ./src/evaluate.py 232 horizontal type=N
-python3 ./src/evaluate.py 233 horizontal type=N
-python3 ./src/evaluate.py 234 horizontal type=N
-python3 ./src/evaluate.py 235 horizontal type=N
-python3 ./src/evaluate.py 236 horizontal type=N
-python3 ./src/evaluate.py 237 horizontal type=N
-python3 ./src/evaluate.py 238 horizontal type=N
-python3 ./src/evaluate.py 239 horizontal type=N
-python3 ./src/evaluate.py 240 horizontal type=N
-python3 ./src/evaluate.py 241 horizontal type=N
-python3 ./src/evaluate.py 242 horizontal type=N
-python3 ./src/evaluate.py 243 horizontal type=N
-python3 ./src/evaluate.py 244 horizontal type=N
-python3 ./src/evaluate.py 245 horizontal type=N
-python3 ./src/evaluate.py 246 horizontal type=N
-python3 ./src/evaluate.py 247 horizontal type=N
-python3 ./src/evaluate.py 248 horizontal type=N
-python3 ./src/evaluate.py 249 horizontal type=N
-python3 ./src/evaluate.py 250 horizontal type=N
-python3 ./src/evaluate.py 251 horizontal type=N
-python3 ./src/evaluate.py 252 horizontal type=N
-python3 ./src/evaluate.py 253 horizontal type=N
-python3 ./src/evaluate.py 254 horizontal type=N
-python3 ./src/evaluate.py 255 horizontal type=N
+#python3 ./src/evaluate.py 504 horizontal type=N
+#python3 ./src/evaluate.py 505 horizontal type=N
+#python3 ./src/evaluate.py 506 horizontal type=N
+#python3 ./src/evaluate.py 507 horizontal type=N
+#python3 ./src/evaluate.py 508 horizontal type=N
+
+#ViT Baseline N2
+#python3 ./src/evaluate.py 730 horizontal type=N
+
+#ViT Best N2
+#python3 ./src/evaluate.py 732 horizontal type=N
+
+#ViT Baseline C2
+#python3 ./src/evaluate.py 876 horizontal type=C
+
+#ViT Best C2
+#python3 ./src/evaluate.py 877 horizontal type=C
+
+#python3 ./src/evaluate.py 1008 horizontal type=C
+#python3 ./src/evaluate.py 1014 horizontal type=P
+#python3 ./src/evaluate.py 1112 horizontal type=P
+#python3 ./src/evaluate.py 1114 horizontal type=P
+
+#ImageNet   事前学習 Fine-Tuning
+
+#N2 baseline
+#python3 ./src/evaluate.py 1123 horizontal type=N
+
+#N2 best
+#python3 ./src/evaluate.py 1128 horizontal type=N
+
+#C2 baseline
+#python3 ./src/evaluate.py 1124 horizontal type=C
+
+#C2 best
+python3 ./src/evaluate.py 1125 horizontal type=C
+
+#P2 baseline
+#python3 ./src/evaluate.py 1126 horizontal type=P
+
+#P2 best
+python3 ./src/evaluate.py 1127 horizontal type=P
+
+#N4 baseline ViT
+#python3 ./src/evaluate.py 1135 horizontal type=N
+
+#N4 best ViT
+#python3 ./src/evaluate.py 1136 horizontal type=N
+
+#N3 baseline ViT
+#python3 ./src/evaluate.py 1141 horizontal type=N
+
+#N3 best ViT
+#python3 ./src/evaluate.py 1224 horizontal type=N
