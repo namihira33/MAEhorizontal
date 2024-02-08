@@ -11,6 +11,8 @@ test_info_list = '../medicaldata/txt/casia16_test_list.csv'
 #pickleの位置
 normal_pkl = '../medicaldata/pkls/OCT_ViT_spin.pkl'
 
+mae_path = './model/MAE_1ep.pth'
+
 MODEL_DIR_PATH = './model/'
 LOG_DIR_PATH = './log/'
 n_per_unit = 1

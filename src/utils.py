@@ -11,6 +11,7 @@ import matplotlib.pyplot as plt
 import matplotlib
 import seaborn as sns
 import torch.nn as nn
+import models_mae
 from sklearn.metrics import *
 
 #2値分類
@@ -338,6 +339,15 @@ def softmax(a):
     sum_exp_a = np.sum(exp_a) # 分母
     y = exp_a / sum_exp_a # 式(3.10)
     return y
+
+def prepare_model(chkpt_dir, arch='mae_vit_base_patch16'):
+    # build model
+    model = getattr(models_mae, arch)()
+    # load model
+    checkpoint = torch.load(chkpt_dir, map_location=device)
+    msg = model.load_state_dict(checkpoint['model'], strict=False)
+    print(msg)
+    return model
 
 def iterate(d, param={}):
     d, param = d.copy(), param.copy()

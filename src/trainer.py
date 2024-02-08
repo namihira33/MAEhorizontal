@@ -11,6 +11,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import torch.nn as nn
 import torch.optim as optim
+import models_mae
 from torch.utils.data.dataset import Subset
 from torch.utils.data import DataLoader 
 from sklearn.model_selection import StratifiedKFold
@@ -122,6 +123,9 @@ class Trainer():
         os.makedirs(self.log_path, exist_ok=True)
         write_LogHeader(self.log_path)
 
+        model_mae = prepare_model(config.mae_path,'mae_vit_base_patch16').to(device)
+        self.mae_encoder = model_mae.forward_encoder
+
     def run(self):
         #実行時間計測
         start = time.time()
@@ -169,8 +173,8 @@ class Trainer():
             #learning_id_index , valid_id_index = kf.split(train_id_index,y).__next__() 1つだけ取り出したいとき
             for a,(learning_id_index,valid_id_index) in enumerate(id_index):
                 #self.net.apply(init_weights)
-                self.net = make_model(self.c['model_name'],self.c['n_per_unit'])#.to(device)
-                self.net = nn.DataParallel(self.net).to(device)
+                self.net = make_model(self.c['model_name'],self.c['n_per_unit'],self.mae_encoder).to(device)
+                #self.net = nn.DataParallel(self.net).to(device)
                 self.optimizer = optim.SGD(params=self.net.parameters(),lr=self.c['lr'],momentum=0.9)
                 #self.optimizer = optim.SGD(params=self.net.parameters(),lr=self.c['lr'],momentum=0.9)
 

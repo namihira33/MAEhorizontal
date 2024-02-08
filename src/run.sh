@@ -2,13 +2,13 @@
 
 for sampler in normal
     do
-        for gamma in 0 0.5
+        for gamma in 0
             do
-                for beta in 0 -1 0.99 0.999
+                for beta in 0
                 do
-                    for lr in 5e-5 1e-4 5e-4
+                    for lr in 5e-5
                     do
-                    python3 ./src/run.py cv=1 evaluate=0 mode=spin type=C preprocess=Add_BlackRects sampler=$sampler gamma=$gamma beta=$beta  lr=$lr epoch=30
+                    python3 ./src/run.py cv=0 evaluate=0 mode=horizontal type=N preprocess=Add_BlackRects sampler=$sampler gamma=$gamma beta=$beta  lr=$lr epoch=1
                     done
                 done
             done
