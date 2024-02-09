@@ -19,11 +19,12 @@ from utils  import *
 from network import *
 from Dataset import *
 from torchvision import models,transforms
-from transformers import DeiTFeatureExtractor, DeiTForImageClassification
 from PIL import Image
 from sklearn.metrics import *
 from datetime import datetime
 from tqdm import tqdm
+from timm.models.layers import trunc_normal_
+from util.pos_embed import interpolate_pos_embed
 
 #TypeToIntdict
 TypeToIntdict = {'age':3,'gender':4,'N':5,'C':7,'P':8}
@@ -123,8 +124,7 @@ class Trainer():
         os.makedirs(self.log_path, exist_ok=True)
         write_LogHeader(self.log_path)
 
-        model_mae = prepare_model(config.mae_path,'mae_vit_base_patch16').to(device)
-        self.mae_encoder = model_mae.forward_encoder
+        #model_mae = prepare_model(config.mae_path,'mae_vit_base_patch16').to(device)
 
     def run(self):
         #実行時間計測
@@ -170,10 +170,32 @@ class Trainer():
                 else:
                     lossList[phase] = [[] for x in range(self.n_splits)]
 
+            model_mae = prepare_model(config.mae_path,'mae_vit_base_patch16')
+
+
             #learning_id_index , valid_id_index = kf.split(train_id_index,y).__next__() 1つだけ取り出したいとき
             for a,(learning_id_index,valid_id_index) in enumerate(id_index):
                 #self.net.apply(init_weights)
-                self.net = make_model(self.c['model_name'],self.c['n_per_unit'],self.mae_encoder).to(device)
+                self.net = make_model(self.c['model_name'],self.c['n_per_unit'])#.to(device)
+                state_dict = self.net.state_dict()
+                print(state_dict)
+
+                temp_mae = torch.load(config.mae_path,map_location='cpu')
+                model_mae = temp_mae['model']
+                #state_dict = model_mae.state_dict()
+                #print(state_dict)
+
+                for k in ['head.weight','head.bias']:
+                    if k in temp_mae and temp_mae[k].shape != state_dict[k].shape:
+                        del model_mae[k]
+                interpolate_pos_embed(self.net,model_mae)
+
+                msg = self.net.load_state_dict(model_mae,strict=False)
+                #print(msg)
+
+                trunc_normal_(self.net.head.weight,std=2e-5)
+                self.net.to(device)
+
                 #self.net = nn.DataParallel(self.net).to(device)
                 self.optimizer = optim.SGD(params=self.net.parameters(),lr=self.c['lr'],momentum=0.9)
                 #self.optimizer = optim.SGD(params=self.net.parameters(),lr=self.c['lr'],momentum=0.9)
@@ -285,7 +307,9 @@ class Trainer():
                 writer.writerow([self.now,n_ex,model_name,n_ep])
             save_path = '{:0=2}'.format(n_ex)+ '_' + model_name + '_' + '{:0=3}'.format(n_ep)+'ep.pth'
             model_save_path = os.path.join(config.MODEL_DIR_PATH,save_path)
-            torch.save(self.net.module.state_dict(),model_save_path)
+            #torch.save(self.net.module.state_dict(),model_save_path)
+            torch.save(self.net.state_dict(),model_save_path)
+
 
         except FileNotFoundError:
             with open(os.path.join(config.LOG_DIR_PATH,'experiment.csv'),'w') as f:

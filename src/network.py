@@ -114,9 +114,8 @@ import timm.models.vision_transformer
 class VisionTransformer(timm.models.vision_transformer.VisionTransformer):
     """Vision Transformer with support for global average pooling"""
 
-    def __init__(self,encoder,mask_ratio=0,global_pool=False, **kwargs):
+    def __init__(self,global_pool=False, **kwargs):
         super(VisionTransformer, self).__init__(**kwargs)
-        self.encoder = encoder
 
         self.global_pool = global_pool
         if self.global_pool:
@@ -152,16 +151,11 @@ class VisionTransformer(timm.models.vision_transformer.VisionTransformer):
             outcome = x[:, 0]
 
         return outcome
-    
-    def forward(self,x):
-        x = self.encoder(x,0)[0][:, 0]
-        x = self.forward_head(x)
-        return x
 
 
-def vit_base_patch16(encoder,**kwargs):
+
+def vit_base_patch16(**kwargs):
     model = VisionTransformer(
-        encoder,
         patch_size=16,
         embed_dim=768,
         depth=12,
@@ -175,9 +169,8 @@ def vit_base_patch16(encoder,**kwargs):
     return model
 
 
-def vit_large_patch16(encoder,**kwargs):
+def vit_large_patch16(**kwargs):
     model = VisionTransformer(
-        encoder,
         patch_size=16,
         embed_dim=1024,
         depth=24,
@@ -251,7 +244,6 @@ def make_model(name,n_per_unit,encoder=None):
         model_name = 'swin_base_patch4_window7_224_in22k'
         net = timm.create_model(model_name,pretrained=True,num_classes=config.n_class).to(device)
     elif name == 'MAE_ViT':
-        if encoder is not None:
-            net = vit_base_patch16(encoder)
+       net = vit_base_patch16()
 
     return net

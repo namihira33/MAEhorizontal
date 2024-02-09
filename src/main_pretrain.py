@@ -196,7 +196,7 @@ def main(args):
         train_stats = train_one_epoch(
             model, data_loader_train, optimizer, device, epoch, loss_scaler, log_writer=log_writer, args=args
         )
-        if args.output_dir and (epoch % 20 == 0 or epoch + 1 == args.epochs):
+        if args.output_dir and (epoch % 200 == 0 or epoch + 1 == args.epochs):
             misc.save_model(
                 args=args,
                 model=model,

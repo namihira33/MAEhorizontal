@@ -6,9 +6,9 @@ for sampler in normal
             do
                 for beta in 0
                 do
-                    for lr in 5e-5
+                    for lr in 5e-4
                     do
-                    python3 ./src/run.py cv=0 evaluate=0 mode=horizontal type=N preprocess=Add_BlackRects sampler=$sampler gamma=$gamma beta=$beta  lr=$lr epoch=1
+                    python3 ./src/run.py cv=1 evaluate=0 mode=horizontal type=N preprocess=Add_BlackRects sampler=$sampler gamma=$gamma beta=$beta  lr=$lr epoch=100
                     done
                 done
             done
