@@ -1,35 +1,26 @@
 #!/bin/bash
 
-for sampler in normal
+
+#python3 ./src/run.py cv=0 evaluate=1 mode=horizontal type=N preprocess=Add_BlackRects sampler=normal gamma=0 beta=0  lr=5e-4 epoch=28
+#python3 ./src/run.py cv=0 evaluate=1 mode=horizontal type=N preprocess=Add_BlackRects sampler=normal gamma=0 beta=0.99  lr=1e-4 epoch=15
+
+
+for preprocess in Add_BlackRects
+do
+    for sampler in normal
     do
         for gamma in 0
-            do
-                for beta in 0
-                do
-                    for lr in 5e-4
-                    do
-                    python3 ./src/run.py cv=1 evaluate=0 mode=horizontal type=N preprocess=Add_BlackRects sampler=$sampler gamma=$gamma beta=$beta  lr=$lr epoch=100
-                    done
-                done
-            done
-    done
-
-#for preprocess in Add_BlackRects
-#do
-#    for sampler in under
-#    do
-#        for gamma in 0.5 
-#       do
-#          for beta in -1
-#          do
-#              for lr in  1e-4
-#               do
-#               python3 ./src/run.py cv=1 evaluate=0 mode=horizontal type=N preprocess=$preprocess sampler=$sampler gamma=$gamma beta=$beta lr=$lr epoch=100
-#               done
-#          done
-#     done
-#  done
-#done
+       do
+          for beta in 0
+          do
+              for lr in  5e-4
+               do
+               python3 ./src/run.py cv=0 evaluate=0 mode=spin type=C preprocess=$preprocess sampler=$sampler gamma=$gamma beta=$beta lr=$lr epoch=45
+               done
+          done
+     done
+  done
+done
 
 #N2 _ ViT FineTuning ImageNet Baseline
 #python3 ./src/run.py cv=1 evaluate=0 mode=horizontal type=N preprocess=Add_BlackRects sampler=over gamma=1 beta=0.99 lr=0.0005 epoch=50

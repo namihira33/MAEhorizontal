@@ -12,6 +12,7 @@ import matplotlib
 import seaborn as sns
 import torch.nn as nn
 import models_mae
+import time
 from sklearn.metrics import *
 
 #2値分類
@@ -413,6 +414,7 @@ def calc_dataset_index(learning_id_index,valid_id_index,mode,n_per_unit):
     learning_index,valid_index,tail = [],[],0
 
     #回転画像の場合は、n_per_unit = 16,水平画像の場合は、n_per_unit = 1
+    n_per_unit = 1
 
     for i in range(ts):
         temp_id = ids[i]
@@ -474,8 +476,8 @@ def make_ConfusionMatrix(cm,save_fig_path):
         ax.set_ylabel('正解値',fontsize=18)
         #ax.set_xticklabels(['1','2,3','4≦'],fontsize=20)
         #ax.set_yticklabels(['1','2,3','4≦'],fontsize=20)
-        ax.set_xticklabels(['0','1'],fontsize=20)
-        ax.set_yticklabels(['0','1'],fontsize=20)
+        ax.set_xticklabels(['N1','N2,N3','≧N4'],fontsize=20)
+        ax.set_yticklabels(['N1','N2,N3','≧N4'],fontsize=20)
         ax.set_xlabel('予測値',fontsize=18)
         ax.set_title('Confusion Matrix',fontsize=20)
         fig.savefig(save_fig_path)
@@ -499,7 +501,6 @@ def make_PRC(labels,preds,save_fig_path,n_class):
         labels_cpy = labels_cpy[:,i]
 
         precisions, recalls, thresholds = precision_recall_curve(labels_cpy, preds_cpy)
-        print(thresholds)
         precisions = np.insert(precisions,0,0)
         precisions = np.append(precisions,1)
         recalls = np.insert(recalls,0,1)

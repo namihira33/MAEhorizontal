@@ -15,6 +15,7 @@ import numpy as np
 import os
 import time
 import config
+import pickle
 from pathlib import Path
 
 import torch
@@ -27,6 +28,7 @@ import util.misc as misc
 from util.misc import NativeScalerWithGradNormCount as NativeScaler
 import models_mae
 from engine_pretrain import train_one_epoch
+from Dataset import load_dataset
 
 
 def get_args_parser():
@@ -126,10 +128,22 @@ def main(args):
             ),  # 3 is bicubic
             transforms.RandomHorizontalFlip(),
             transforms.ToTensor(),
-            transforms.Normalize([0.4914, 0.4822, 0.4465], [0.2470, 0.2435, 0.2616]),
+            transforms.Normalize((0.5, ), (0.5, )),
         ]
     )
-    dataset_train = datasets.ImageFolder(os.path.join(args.data_path, "CASIA2_Add"), transform=transform_train)
+
+    pkl_file = config.MAE_dataset_pkl
+    if os.path.exists(pkl_file):
+            with open(pkl_file,mode="rb") as f:
+                    dataset_train = pickle.load(f)
+    else :
+            dataset_train = load_dataset(config.n_per_unit,'_','_',train_transform = transform_train,root=os.path.join(args.data_path,"CASIA2_Add"))
+            with open(pkl_file,mode="wb") as f:
+                pickle.dump(dataset_train,f)
+
+    #pickleを使わない場合は下で. pickleを一回使ってうまく行けば上を使う.
+    #dataset_train = load_dataset(config.n_per_unit,'_','_',train_transform = transform_train,root=os.path.join(args.data_path,"CASIA2_Add"))
+    #dataset_train = datasets.ImageFolder(os.path.join(args.data_path, "CASIA2_Add"), transform=transform_train)
     print(dataset_train)
 
     if True:  # args.distributed:
@@ -159,7 +173,6 @@ def main(args):
 
     # define the model
     model = models_mae.__dict__[args.model](norm_pix_loss=args.norm_pix_loss)
-
     model.to(device)
 
     model_without_ddp = model

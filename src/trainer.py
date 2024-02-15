@@ -5,6 +5,7 @@ import config
 import random
 import pickle
 import torch
+import timm
 import tensorboardX as tbx
 import numpy as np
 import matplotlib.pyplot as plt
@@ -25,6 +26,7 @@ from datetime import datetime
 from tqdm import tqdm
 from timm.models.layers import trunc_normal_
 from util.pos_embed import interpolate_pos_embed
+from lion_pytorch import Lion
 
 #TypeToIntdict
 TypeToIntdict = {'age':3,'gender':4,'N':5,'C':7,'P':8}
@@ -80,7 +82,10 @@ def calc_class_count(dataset,n_class):
     class_count = [0] * n_class
 
     for i in range(len(dataset)):
-        label = int([np.argmax(dataset[i][1].detach().cpu().numpy())][0])
+        if all(torch.argmax(dataset.pick_label(i)) == torch.Tensor([1])):
+            label = 1
+        else :
+            label = 0
         class_count[label] += 1
 
     #labelsを元に各クラスの数を計算する
@@ -151,7 +156,6 @@ class Trainer():
                 with open(config.normal_pkl,mode="wb") as f:
                     pickle.dump(self.dataset,f)
 
-
             #使用モデルがViTの場合に改造する。
             #self.net = make_model(self.c['model_name'],self.c['n_per_unit'])
             #self.net = nn.DataParallel(self.net)
@@ -165,7 +169,7 @@ class Trainer():
 
             lossList = {}
             for phase in ['learning','valid']:
-                if self.c['cv'] == 0:
+                if self.c['cv'] : 
                     lossList[phase] = [[] for x in range(1)]  #self.n_splits
                 else:
                     lossList[phase] = [[] for x in range(self.n_splits)]
@@ -178,7 +182,6 @@ class Trainer():
                 #self.net.apply(init_weights)
                 self.net = make_model(self.c['model_name'],self.c['n_per_unit'])#.to(device)
                 state_dict = self.net.state_dict()
-                print(state_dict)
 
                 temp_mae = torch.load(config.mae_path,map_location='cpu')
                 model_mae = temp_mae['model']
@@ -198,11 +201,14 @@ class Trainer():
 
                 #self.net = nn.DataParallel(self.net).to(device)
                 self.optimizer = optim.SGD(params=self.net.parameters(),lr=self.c['lr'],momentum=0.9)
-                #self.optimizer = optim.SGD(params=self.net.parameters(),lr=self.c['lr'],momentum=0.9)
+                #self.optimizer = optim.AdamW(params=self.net.parameters(),lr=self.c['lr'])
+                #self.scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(self.optimizer,max_epochs=70,warmup_start_ler=5e-5,eta_min=5e-5)
+                #self.optimizer = Lion(params=self.net.parameters(),lr=self.c['lr'],weight_decay=1e-2)
+                self.scheduler = torch.optim.lr_scheduler.LinearLR(self.optimizer,start_factor=self.c['lr'],end_factor=1e-4,total_iters=self.c['n_epoch'])
 
                 #画像に対応したIDに変換 -> Dataloaderで読み込む。
                 learning_index,valid_index = calc_dataset_index(learning_id_index,valid_id_index,'train',self.c['n_per_unit'])
-                learning_dataset = Subset(self.dataset['train'],learning_index)
+                learning_dataset = Subset_label(self.dataset['train'],learning_index)
 
                 #訓練データの各クラス数をカウントしないといけないのでは？
                 
@@ -222,7 +228,7 @@ class Trainer():
                     self.dataloaders['learning'] = BinaryUnderSampler(learning_dataset,self.c['bs']//config.n_class)
 
                 if not self.c['evaluate']:
-                    valid_dataset = Subset(self.dataset['train'],valid_index)
+                    valid_dataset = Subset_label(self.dataset['valid'],valid_index)
                     #検証データに対するSamplerは普通のを採用すればいいから実装する必要がない
                     self.dataloaders['valid'] = DataLoader(valid_dataset,self.c['bs'],
                     shuffle=True,num_workers=os.cpu_count())
@@ -333,9 +339,9 @@ class Trainer():
             labels_ = torch.max(labels_,1)[1]
 
             #Samplerを使うときの処理
-            #if phase == 'learning' and ((self.c['sampler'] == 'over') or (self.c['sampler'] == 'under')):
-            #    inputs_ = inputs_.unsqueeze(1)
-            #labels_ = labels_.unsqueeze(1)
+            if phase == 'learning' and ((self.c['sampler'] == 'over') or (self.c['sampler'] == 'under')):
+                inputs_ = inputs_.unsqueeze(1)
+                labels_ = labels_.unsqueeze(1)
 
 
             self.optimizer.zero_grad()
@@ -364,6 +370,10 @@ class Trainer():
             preds += [outputs_.detach().cpu().numpy()]
             labels += [labels_.detach().cpu().numpy()]
             total_loss += float(loss.detach().cpu().numpy()) * len(inputs_)
+
+        self.scheduler.step()
+        print(f"Epoch [{epoch+1}], Learning Rate: {self.optimizer.param_groups[0]['lr']}")
+
 
         preds = np.concatenate(preds)
         labels = np.concatenate(labels)

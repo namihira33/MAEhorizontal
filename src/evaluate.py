@@ -91,6 +91,7 @@ class Evaluater():
         #model_name = 'vit_base_patch16_224'
         #self.net = timm.create_model(model_name,num_classes=config.n_class).to(device)
         self.net.load_state_dict(torch.load(model_path,map_location=device))
+        self.net.to(device)
         self.criterion = nn.BCELoss()
 
     def run(self):
@@ -148,10 +149,10 @@ class Evaluater():
         make_PRC(labels,preds,save_fig_path,config.n_class) #クラスiの場合のグラフも作る (縦に3つでとりあえず作ってみる)
         #make_PRBar(labels,preds,save_fig_path2,config.n_class )
 
-        roc_auc = roc_auc_score(labels, preds[:,1])
-        fig_path = model_info + '_ep_ROC.png'
-        save_fig_path = os.path.join(config.LOG_DIR_PATH,'images',fig_path)
-        make_ROC(labels,preds[:,1],save_fig_path)
+        roc_auc = roc_auc_score(labels, preds,multi_class="ovr",average="macro")
+        #fig_path = model_info + '_ep_ROC.png'
+        #save_fig_path = os.path.join(config.LOG_DIR_PATH,'images',fig_path)
+        #make_ROC(labels,preds[:,1],save_fig_path)
 
         #加重平均・四捨五入で予測
         temp_class = np.arange(config.n_class)

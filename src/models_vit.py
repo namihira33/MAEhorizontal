@@ -68,6 +68,7 @@ def vit_base_patch16(**kwargs):
         qkv_bias=True,
         norm_layer=partial(nn.LayerNorm, eps=1e-6),
         num_classes=config.n_class,
+        in_chans=config.n_per_unit,
         **kwargs
     )
     return model
@@ -83,6 +84,7 @@ def vit_large_patch16(**kwargs):
         qkv_bias=True,
         norm_layer=partial(nn.LayerNorm, eps=1e-6),
         num_classes=config.n_class,
+        in_chans=config.n_per_unit,
         **kwargs
     )
     return model
@@ -98,6 +100,7 @@ def vit_huge_patch14(**kwargs):
         qkv_bias=True,
         norm_layer=partial(nn.LayerNorm, eps=1e-6),
         num_classes=config.n_class,
+        in_chans=config.n_per_unit,
         **kwargs
     )
     return model

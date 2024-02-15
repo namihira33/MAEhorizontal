@@ -9,6 +9,7 @@ import numpy as np
 from utils import *
 import timm
 from timm.data.constants import IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD
+from glob import glob
 
 #水平断面画像のデータセット
 class OCThorizontalDatasetBase(Dataset):
@@ -66,6 +67,10 @@ class OCThorizontalDatasetBase(Dataset):
 
     def get_label(self, label_base):
         pass
+
+    def pick_label(self, index):
+        label = torch.eye(config.n_class)[self.labels[index]]
+        return torch.Tensor(label)
 
         
 class OCThorizontalDataset(OCThorizontalDatasetBase):
@@ -139,7 +144,7 @@ class OCTspinDatasetBase(Dataset):
         pass
 '''
 
-
+'''
 class OCTspinDatasetBase(Dataset):
     def __init__(self, root, image_list_file,transform=None,n_per_unit=16,d_type=6):
         # まずはファイルを開いてID一覧を出力
@@ -177,6 +182,64 @@ class OCTspinDatasetBase(Dataset):
     def pick_label(self, index):
         label = torch.eye(config.n_class)[self.labels[index]]
         return torch.Tensor(label)
+'''
+
+class OCTspinDatasetBase(Dataset):
+    def __init__(self, root, image_list_file,transform=None,n_per_unit=16,d_type=6):
+        # まずはファイルを開いてID一覧を出力
+        with open(image_list_file,"r") as f:
+            lines = f.readlines()
+        lines = [line.rstrip("\n") for line in lines] #右の改行文字の削除
+        item_matrix = [line.split(',') for line in lines]
+
+        self.transform = transform
+        self.images = torch.empty(0)
+
+        #画像の名前、ラベル、インデックスを記録する
+        self.image_names = [os.path.join(root,item[1] + '_' + item[2] + '_' + '{:0=3}'.format(int(0)) + '.jpg') for item in item_matrix if isint(item[1]) and isint(item[d_type]) ]
+        labels = []
+
+        #別々に扱う場合
+        for item in item_matrix:
+            spin_images = torch.empty(0)
+            if isint(item[1]) and isint(item[d_type]):
+                for i in range(n_per_unit):
+                    image_name = item[1] + '_' + item[2] + '_' + '{:0=3}'.format(int(i)) + '.jpg'
+                    subset_image = Image.open(os.path.join(root,image_name)).convert('L')
+                    if transform is not None:
+                        subset_image = self.transform(subset_image)
+                    spin_images = torch.cat((spin_images,subset_image),0)
+                spin_images = torch.reshape(spin_images,(1,n_per_unit,config.image_size,config.image_size))
+                self.images = torch.cat((self.images,spin_images),0)
+                label = self.get_label(int(item[d_type][0]))
+                labels.append(label)
+            print(len(labels))
+            print(self.images.size())
+
+        self.labels = labels
+        print(len(self.labels))
+        self.item_indexes = np.array(range(len(labels)))
+        self.image_list_file = image_list_file
+
+
+    def __getitem__(self, index):
+        image_name = self.image_names[index]
+        #image = Image.open(image_name).convert('L')
+        image = self.images[index]
+        label = torch.eye(config.n_class)[self.labels[index]]
+        item_index = self.item_indexes[index]
+        #if self.transform is not None:
+        #    image = self.transform(image)
+
+        return (image,torch.Tensor(label),item_index) if self.image_list_file==config.train_info_list else (image,torch.Tensor(label),image_name)
+
+    def __len__(self):
+        return len(self.labels)
+
+    def pick_label(self, index):
+        label = torch.eye(config.n_class)[self.labels[index]]
+        return torch.Tensor(label)
+
 
         
 
@@ -188,36 +251,138 @@ class OCTspinDataset(OCTspinDatasetBase):
         else:
             return 1
 
-def load_dataset(n_per_unit,d_type,preprocess):
-    train_transform = \
-        transforms.Compose([transforms.Resize(config.image_size),
-                            transforms.CenterCrop(config.image_size),
-                            transforms.ToTensor(),
-                            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-                            ])
+
+class OCTspinMAEDatasetBase(Dataset):
+    def __init__(self, root, image_list_file,transform=None,n_per_unit=16,d_type=6):
+
+        self.transform = transform
+        self.images = torch.empty(0)
+        self.labels = []
+
+        #画像の名前、ラベル、インデックスを記録する
+        self.image_names = sorted(glob('../medicaldata/images/CASIA2_Add/train_add/*.png'))
+
+        image_cnt = 0
+        spin_images = torch.empty(0)
+
+        for image_name in self.image_names:
+            subset_image = Image.open(image_name).convert('L')
+            if transform is not None:
+                subset_image = self.transform(subset_image)
+            print(image_name)
+            spin_images = torch.cat((spin_images,subset_image),0)
+            print(spin_images.size())
+            image_cnt += 1
+
+            if image_cnt == 16:
+                spin_images = torch.reshape(spin_images,(1,n_per_unit,config.image_size,config.image_size))
+                self.images = torch.cat((self.images,spin_images),0)
+                label = 0
+                self.labels.append(label)
+                image_cnt = 0
+                spin_images = torch.empty(0)
+                print(self.images.size())
+
+
+        self.item_indexes = np.array(range(len(self.labels)*n_per_unit))
+        self.transform = transform
+
+    def __getitem__(self, index):
+        #image_name = self.image_names[index]
+        #image = Image.open(image_name).convert('L')
+        image = self.images[index]
+        label = self.labels[index]
+        #label = torch.eye(config.n_class)[self.labels[index]]
+        #item_index = self.item_indexes[index]
+        #if self.transform is not None:
+        #    image = self.transform(image)
+
+        return (image,label)
+
+    def __len__(self):
+        return len(self.labels)
+
+    def pick_label(self, index):
+        label = torch.eye(config.n_class)[self.labels[index]]
+        return torch.Tensor(label)
+
+        
+
+# 症状なし:0 軽度:1 中度:2 重度:3と分類する。
+class OCTspinMAEDataset(OCTspinMAEDatasetBase):
+    def get_label(self, label_base):
+        if label_base == 1:
+            return 0
+        else:
+            return 1
+
+def load_dataset(n_per_unit,d_type,preprocess,train_transform=None,root=None):
+
+    valid_transform = \
+            transforms.Compose([transforms.Resize(config.image_size),
+                                transforms.CenterCrop(config.image_size),
+                                transforms.ToTensor(),
+                                transforms.Normalize((0.5, ),(0.5, ))
+                                ])
     test_transform = \
-        transforms.Compose([transforms.Resize(config.image_size),
-                            transforms.CenterCrop(config.image_size),
-                            transforms.ToTensor(),
-                            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-                                                 ])
-    
+            transforms.Compose([transforms.Resize(config.image_size),
+                                transforms.CenterCrop(config.image_size),
+                                transforms.ToTensor(),
+                                transforms.Normalize((0.5, ),(0.5, ))
+                                                    ])
+                                                
+        
     dataset = {}
     if n_per_unit == 1:
+        if train_transform is None:
+            train_transform = \
+                transforms.Compose([
+                                #transforms.RandomResizedCrop(224, scale=(0.8, 1.0), interpolation=transforms.InterpolationMode.BICUBIC),
+                                #transforms.RandomHorizontalFlip(),
+                                transforms.Resize(config.image_size),
+                                transforms.CenterCrop(config.image_size),
+                                transforms.ToTensor(),
+                                transforms.Normalize((0.5, ), (0.5, )),
+                                ])
         dataset['train'] = \
             OCThorizontalDataset(root=os.path.join(config.data_root,preprocess),
                                     image_list_file=config.train_info_list,
                                     transform=train_transform,n_per_unit = n_per_unit,d_type=d_type)
+        dataset['valid'] = \
+            OCThorizontalDataset(root=os.path.join(config.data_root,preprocess),
+                                    image_list_file=config.train_info_list,
+                                    transform=valid_transform,n_per_unit = n_per_unit,d_type=d_type)                                    
 
         dataset['test'] = \
             OCThorizontalDataset(root=config.data_root,
                                     image_list_file=config.test_info_list,
                                     transform=test_transform,n_per_unit = n_per_unit,d_type=d_type)
     elif n_per_unit == 16:
-        dataset['train'] = \
+        # MAEで使う場合だけ、train_transformを呼び出し時に入れる
+        if train_transform is not None:
+            dataset = \
+                OCTspinMAEDataset(root=root,
+                                        image_list_file=None,
+                                        transform=train_transform,n_per_unit = n_per_unit,d_type=d_type)
+            return dataset
+        else:
+            train_transform = \
+                transforms.Compose([
+                                #transforms.RandomResizedCrop(224, scale=(0.8, 1.0), interpolation=transforms.InterpolationMode.BICUBIC),
+                                #transforms.RandomHorizontalFlip(),
+                                transforms.Resize(config.image_size),
+                                transforms.CenterCrop(config.image_size),
+                                transforms.ToTensor(),
+                                transforms.Normalize((0.5, ), (0.5, )),
+                                ])
+            dataset['train'] = \
+                OCTspinDataset(root=config.data_root,
+                                        image_list_file=config.train_info_list,
+                                        transform=train_transform,n_per_unit = n_per_unit,d_type=d_type)
+        dataset['valid'] = \
             OCTspinDataset(root=config.data_root,
                                     image_list_file=config.train_info_list,
-                                    transform=train_transform,n_per_unit = n_per_unit,d_type=d_type)
+                                    transform=valid_transform,n_per_unit = n_per_unit,d_type=d_type)   
         dataset['test'] = \
             OCTspinDataset(root=config.data_root,
                                     image_list_file=config.test_info_list,

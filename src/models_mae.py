@@ -13,9 +13,9 @@ from functools import partial
 
 import torch
 import torch.nn as nn
+import config
 
 from timm.models.vision_transformer import PatchEmbed, Block
-
 from util.pos_embed import get_2d_sincos_pos_embed
 
 
@@ -26,7 +26,7 @@ class MaskedAutoencoderViT(nn.Module):
         self,
         img_size=224,
         patch_size=16,
-        in_chans=3,
+        in_chans=config.n_per_unit,
         embed_dim=1024,
         depth=24,
         num_heads=16,
@@ -116,16 +116,16 @@ class MaskedAutoencoderViT(nn.Module):
 
     def patchify(self, imgs):
         """
-        imgs: (N, 3, H, W)
+        imgs: (N, n_per_unit, H, W)
         x: (N, L, patch_size**2 *3)
         """
         p = self.patch_embed.patch_size[0]
-        assert imgs.shape[2] == imgs.shape[3] and imgs.shape[2] % p == 0
+        #assert imgs.shape[2] == imgs.shape[3] and imgs.shape[2] % p == 0
 
         h = w = imgs.shape[2] // p
-        x = imgs.reshape(shape=(imgs.shape[0], 3, h, p, w, p))
+        x = imgs.reshape(shape=(imgs.shape[0], config.n_per_unit, h, p, w, p))
         x = torch.einsum("nchpwq->nhwpqc", x)
-        x = x.reshape(shape=(imgs.shape[0], h * w, p**2 * 3))
+        x = x.reshape(shape=(imgs.shape[0], h * w, p**2 * config.n_per_unit))
         return x
 
     def unpatchify(self, x):
@@ -137,9 +137,9 @@ class MaskedAutoencoderViT(nn.Module):
         h = w = int(x.shape[1] ** 0.5)
         assert h * w == x.shape[1]
 
-        x = x.reshape(shape=(x.shape[0], h, w, p, p, 3))
+        x = x.reshape(shape=(x.shape[0], h, w, p, p, config.n_per_unit))
         x = torch.einsum("nhwpqc->nchpwq", x)
-        imgs = x.reshape(shape=(x.shape[0], 3, h * p, h * p))
+        imgs = x.reshape(shape=(x.shape[0], config.n_per_unit, h * p, h * p))
         return imgs
 
     def random_masking(self, x, mask_ratio):

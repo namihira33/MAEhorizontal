@@ -33,13 +33,13 @@
 #python3 ./src/evaluate.py 1124 horizontal type=C
 
 #C2 best
-python3 ./src/evaluate.py 1125 horizontal type=C
+#python3 ./src/evaluate.py 1125 horizontal type=C
 
 #P2 baseline
 #python3 ./src/evaluate.py 1126 horizontal type=P
 
 #P2 best
-python3 ./src/evaluate.py 1127 horizontal type=P
+#python3 ./src/evaluate.py 1127 horizontal type=P
 
 #N4 baseline ViT
 #python3 ./src/evaluate.py 1135 horizontal type=N
@@ -52,3 +52,10 @@ python3 ./src/evaluate.py 1127 horizontal type=P
 
 #N3 best ViT
 #python3 ./src/evaluate.py 1224 horizontal type=N
+
+#MAE N3
+#python3 ./src/evaluate.py 65 horizontal type=N
+#python3 ./src/evaluate.py 66 horizontal type=N
+#python3 ./src/evaluate.py 67 horizontal type=N
+
+python3 ./src/evaluate.py 76 horizontal type=N
