@@ -164,7 +164,7 @@ def vit_base_patch16(**kwargs):
         qkv_bias=True,
         norm_layer=partial(nn.LayerNorm, eps=1e-6),
         num_classes=config.n_class,
-        in_chans=config.n_per_unit,
+        in_chans=config.n_per_unit*3,
         **kwargs
     )
     return model
@@ -248,5 +248,7 @@ def make_model(name,n_per_unit,encoder=None):
         net = timm.create_model(model_name,pretrained=True,num_classes=config.n_class).to(device)
     elif name == 'MAE_ViT':
        net = vit_base_patch16()
+
+    #MAE_ViT16to1みたいなモデルを作って、エンコーダーを読み込んだ後は16個のヘッドを使ってforwardさせるコードを書く.
 
     return net

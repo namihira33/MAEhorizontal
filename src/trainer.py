@@ -169,13 +169,12 @@ class Trainer():
 
             lossList = {}
             for phase in ['learning','valid']:
-                if self.c['cv'] : 
+                if self.c['cv'] == 0: 
                     lossList[phase] = [[] for x in range(1)]  #self.n_splits
                 else:
                     lossList[phase] = [[] for x in range(self.n_splits)]
 
             model_mae = prepare_model(config.mae_path,'mae_vit_base_patch16')
-
 
             #learning_id_index , valid_id_index = kf.split(train_id_index,y).__next__() 1つだけ取り出したいとき
             for a,(learning_id_index,valid_id_index) in enumerate(id_index):
@@ -194,6 +193,7 @@ class Trainer():
                 interpolate_pos_embed(self.net,model_mae)
 
                 msg = self.net.load_state_dict(model_mae,strict=False)
+                print(self.net)
                 #print(msg)
 
                 trunc_normal_(self.net.head.weight,std=2e-5)
@@ -204,14 +204,14 @@ class Trainer():
                 #self.optimizer = optim.AdamW(params=self.net.parameters(),lr=self.c['lr'])
                 #self.scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(self.optimizer,max_epochs=70,warmup_start_ler=5e-5,eta_min=5e-5)
                 #self.optimizer = Lion(params=self.net.parameters(),lr=self.c['lr'],weight_decay=1e-2)
-                self.scheduler = torch.optim.lr_scheduler.LinearLR(self.optimizer,start_factor=self.c['lr'],end_factor=1e-4,total_iters=self.c['n_epoch'])
+                self.scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer,step_size=15,gamma=0.8)
 
                 #画像に対応したIDに変換 -> Dataloaderで読み込む。
                 learning_index,valid_index = calc_dataset_index(learning_id_index,valid_id_index,'train',self.c['n_per_unit'])
                 learning_dataset = Subset_label(self.dataset['train'],learning_index)
 
                 #訓練データの各クラス数をカウントしないといけないのでは？
-                
+        
                 #self.class_weight = calc_class_inverse_weight(learning_dataset)
                 self.class_weight = calc_class_weight(learning_dataset,config.n_class,beta=self.c['beta'])
                 calc_class_count(learning_dataset,config.n_class)
@@ -239,7 +239,7 @@ class Trainer():
                     learningauc,learningloss,learningprecision,learningrecall \
                         = self.execute_epoch(epoch, 'learning')
                     #平均計算用にauc.lossを保存。
-                    lossList['learning'][a].append(learningloss)
+                    #lossList['learning'][a].append(learningloss)
 
                     if not self.c['evaluate']:
                         valid_pr_auc,validloss,validprecision,validrecall \
@@ -253,7 +253,7 @@ class Trainer():
                         #    break
 
 
-                        lossList['valid'][a].append(validloss)
+                        #lossList['valid'][a].append(validloss)
 
                         #valid_pr_aucを蓄えておいてあとでベスト10を出力
                         temp = valid_pr_auc,epoch,self.c
@@ -339,9 +339,9 @@ class Trainer():
             labels_ = torch.max(labels_,1)[1]
 
             #Samplerを使うときの処理
-            if phase == 'learning' and ((self.c['sampler'] == 'over') or (self.c['sampler'] == 'under')):
-                inputs_ = inputs_.unsqueeze(1)
-                labels_ = labels_.unsqueeze(1)
+            #if phase == 'learning' and ((self.c['sampler'] == 'over') or (self.c['sampler'] == 'under')):
+            #    inputs_ = inputs_.unsqueeze(1)
+            #    labels_ = labels_.unsqueeze(1)
 
 
             self.optimizer.zero_grad()
@@ -371,7 +371,8 @@ class Trainer():
             labels += [labels_.detach().cpu().numpy()]
             total_loss += float(loss.detach().cpu().numpy()) * len(inputs_)
 
-        self.scheduler.step()
+        if phase == 'learning' :
+            self.scheduler.step()
         print(f"Epoch [{epoch+1}], Learning Rate: {self.optimizer.param_groups[0]['lr']}")
 
 
