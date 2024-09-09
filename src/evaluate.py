@@ -28,7 +28,7 @@ import copy
 
 
 c = {
-    'model_name': 'MAE_ViT','seed': 0, 'bs': 32
+    'model_name': 'ResNet18_PT','seed': 0, 'bs': 32
 }
 
 torch.backends.cudnn.benchmark = True
@@ -163,8 +163,8 @@ class Evaluater():
         #roc_auc = roc_auc_score(labels, preds,multi_class="ovr",average="macro")
         
         #2クラス分類の場合
-        #roc_auc = roc_auc_score(labels, preds[:,1])
-        roc_auc = roc_auc_score(labels, preds,multi_class="ovr",average="macro")
+        roc_auc = roc_auc_score(labels, preds[:,1])
+        #roc_auc = roc_auc_score(labels, preds,multi_class="ovr",average="macro")
 
         #fig_path = model_info + '_ep_ROC.png'
         #save_fig_path = os.path.join(config.LOG_DIR_PATH,'images',fig_path)
@@ -207,8 +207,8 @@ class Evaluater():
         #fig_path = model_info + '_ep_CM.png'
         #save_fig_path = os.path.join(config.LOG_DIR_PATH,'images',fig_path)
 
-        #cm = confusion_matrix(labels,preds)
-        #make_ConfusionMatrix(cm,save_fig_path)
+        cm = confusion_matrix(labels,preds)
+        make_ConfusionMatrix(cm,save_fig_path)
 
         right += (preds == labels).sum()
         notright += len(preds) - (preds == labels).sum()

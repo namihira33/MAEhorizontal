@@ -204,7 +204,7 @@ class Trainer():
                 #self.optimizer = optim.AdamW(params=self.net.parameters(),lr=self.c['lr'])
                 #self.scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(self.optimizer,max_epochs=70,warmup_start_ler=5e-5,eta_min=5e-5)
                 #self.optimizer = Lion(params=self.net.parameters(),lr=self.c['lr'],weight_decay=1e-2)
-                self.scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer,step_size=15,gamma=0.8)
+                #self.scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer,step_size=15,gamma=0.8)
 
                 #画像に対応したIDに変換 -> Dataloaderで読み込む。
                 learning_index,valid_index = calc_dataset_index(learning_id_index,valid_id_index,'train',self.c['n_per_unit'])
@@ -371,8 +371,8 @@ class Trainer():
             labels += [labels_.detach().cpu().numpy()]
             total_loss += float(loss.detach().cpu().numpy()) * len(inputs_)
 
-        if phase == 'learning' :
-            self.scheduler.step()
+        #if phase == 'learning' :
+        #    self.scheduler.step()
         print(f"Epoch [{epoch+1}], Learning Rate: {self.optimizer.param_groups[0]['lr']}")
 
 

@@ -253,6 +253,7 @@ def mae_vit_base_patch16_dec512d8b(**kwargs):
         decoder_num_heads=16,
         mlp_ratio=4,
         norm_layer=partial(nn.LayerNorm, eps=1e-6),
+        in_chans = config.n_per_unit*3,
         **kwargs
     )
     return model

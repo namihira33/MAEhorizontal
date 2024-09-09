@@ -13,9 +13,26 @@ do
        do
           for beta in 0
           do
-              for lr in 4e-4
+              for lr in 5e-4
                do
-               python3 ./src/run.py cv=1 evaluate=0 mode=horizontal type=C preprocess=$preprocess sampler=$sampler gamma=$gamma beta=$beta lr=$lr epoch=1
+               python3 ./src/run.py cv=0 evaluate=1 mode=horizontal type=N preprocess=$preprocess sampler=$sampler gamma=$gamma beta=$beta lr=$lr epoch=41
+               done
+          done
+     done
+  done
+done
+
+for preprocess in Add_BlackRects
+do
+    for sampler in over
+    do
+        for gamma in 0
+       do
+          for beta in 0
+          do
+              for lr in 5e-4
+               do
+               python3 ./src/run.py cv=0 evaluate=1 mode=horizontal type=N preprocess=$preprocess sampler=$sampler gamma=$gamma beta=$beta lr=$lr epoch=16
                done
           done
      done
